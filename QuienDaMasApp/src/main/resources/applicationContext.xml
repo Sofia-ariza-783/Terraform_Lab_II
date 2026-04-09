@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:c="http://www.springframework.org/schema/c"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+    http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.0.xsd
+          http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+          http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd">
+
+  <rabbit:connection-factory id="connectionFactory" host="localhost" username="guest" password="guest" />
+  <rabbit:admin connection-factory="connectionFactory" />
+
+  <!-- Queue for product publications -->
+  <rabbit:queue id="myAnonymousQueue" />
+  <!-- Queue for winner notifications (each buyer gets its own anonymous queue) -->
+  <rabbit:queue id="winnerQueue" />
+
+  <rabbit:topic-exchange id="myExchange" name="QDM-EXCHANGE">
+    <rabbit:bindings>
+      <rabbit:binding queue="myAnonymousQueue" pattern="my.#.*" />
+      <rabbit:binding queue="winnerQueue" pattern="auction.winner" />
+    </rabbit:bindings>
+  </rabbit:topic-exchange>
+
+  <bean id="messageListener" class="edu.eci.arsw.exam.events.OffertMessageListener">
+    <property name="amqpTemplate" ref="amqpTemplate"/>
+  </bean>
+
+  <bean id="winningOfferListener" class="edu.eci.arsw.exam.events.WinningOfferListener"/>
+
+  <rabbit:listener-container id="myListenerContainer" connection-factory="connectionFactory">
+    <rabbit:listener ref="messageListener" queues="myAnonymousQueue" />
+    <rabbit:listener ref="winningOfferListener" queues="winnerQueue" />
+  </rabbit:listener-container>
+
+  <rabbit:template id="amqpTemplate" connection-factory="connectionFactory"/>
+
+
+</beans>
